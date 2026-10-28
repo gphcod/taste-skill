@@ -13,6 +13,7 @@
 //                 [--options 3]                show three dealt directions to choose from, write nothing
 //                 [--direction <id>]           deal the full sheet for the chosen direction
 //   node draw.mjs --show                       reprint the saved direction sheet
+//   node draw.mjs --show hero|section:<role>|type|colour|imagery|motion   reprint one part, with the page's type and colour
 //   node draw.mjs --redraw hero|type|palette|photos|scenes|section:<role>|direction   re-deal one slot
 //   node draw.mjs --list sectors|directions|roles|tones|scenes
 //   node draw.mjs --site <id>                  print one studied reference site in full
@@ -27,6 +28,7 @@ import { homedir } from 'node:os';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const LIB = join(HERE, '..', 'library');
+const MOTION_MD = join(HERE, '..', 'references', 'motion.md');
 const ASSETS_PATH = join(HERE, 'assets.mjs').split('\\').join('/');
 const ASSETS_CMD = `node ${/\s/.test(ASSETS_PATH) ? `"${ASSETS_PATH}"` : ASSETS_PATH}`;
 const load = (name) => JSON.parse(readFileSync(join(LIB, name + '.json'), 'utf8'));
@@ -116,7 +118,20 @@ const writeHist = (entry) => { try { mkdirSync(dirname(userHist), { recursive: t
 const saved = existsSync(sheetPath) ? JSON.parse(readFileSync(sheetPath, 'utf8')) : null;
 if (opt('show')) {
   if (!saved) { console.error('No saved direction. Run a draw first.'); process.exit(2); }
-  console.log(render(saved)); process.exit(0);
+  // --show <part> reprints the part being built with what every part needs (the idea, the composition, the
+  // type and colour tokens, the house rules), so a long session can re-read it without the whole sheet
+  const part = typeof opt('show') === 'string' ? String(opt('show')) : null;
+  if (!part) { console.log(render(saved)); process.exit(0); }
+  const context = ['head', 'idea', 'composition', 'type', 'colour'];
+  let only;
+  if (part.startsWith('section:')) {
+    const role = ROLE_ALIAS[part.slice(8)] || part.slice(8);
+    if (!saved.sections.some((x) => x.role === role)) { console.error(`No section with role ${role} in this sheet. Its sections: ${saved.sections.map((x) => x.role).join(', ')}.`); process.exit(2); }
+    only = { parts: new Set([...context, 'sections', 'scenes']), role };
+  } else if (part === 'hero') only = { parts: new Set([...context, 'hero', 'motion', 'scenes']), role: 'hero' };
+  else if (['type', 'colour', 'imagery', 'motion'].includes(part)) only = { parts: new Set([...context, part]) };
+  else { console.error('Unknown part. Use --show alone, or --show hero | section:<role> | type | colour | imagery | motion.'); process.exit(2); }
+  console.log(render(saved, only)); process.exit(0);
 }
 
 const L = { directions: load('directions'), heroes: load('heroes'), sections: load('sections'), type: load('type'), palettes: load('palettes'), photos: load('photos'), sites: load('sites'), motions: load('motions'), scenes: existsSync(join(LIB, 'scenes.json')) ? load('scenes') : [] };
@@ -330,15 +345,19 @@ function dealPhotos(dir, input) {
   if (!scored.length) return null;
   // one set, so the photographs share a subject and a light; choose among the best-fitting few
   const top = scored.filter((x) => x.score >= scored[0].score * 0.6).slice(0, 4);
-  const chosen = pick(top);
+  // a direction with its own light (the dark room) takes, among the sets that fit the subject, one that can supply it
+  const lit = dir.photoTone ? top.filter((x) => x.set.photos.filter((ph) => ph.tone === dir.photoTone).length >= 4) : [];
+  const chosen = pick(lit.length ? lit : top);
   let pool = chosen.set.photos;
   if (dir.photoTone) { const toned = pool.filter((ph) => ph.tone === dir.photoTone || ph.tone === 'mid'); if (toned.length >= 6) pool = toned; }
   // Without product photographs, a picture of the same kind of thing would pass for the product: deal
   // those last and mark them. Otherwise a picture that matches the brief is the better atmosphere.
+  // The direction's light comes before either: its own tone first, then mid tones.
   const things = words.filter((w) => w.length >= 5);
   const matches = (ph) => things.some((w) => ph.alt.toLowerCase().includes(w));
   const bonus = mode === 'no-product-photo' ? -2 : 2;
-  const ranked = shuffle(pool).sort((a, b) => (b.quality + (matches(b) ? bonus : 0)) - (a.quality + (matches(a) ? bonus : 0)))
+  const light = (ph) => (!dir.photoTone || ph.tone === dir.photoTone ? 0 : ph.tone === 'mid' ? 1 : 2);
+  const ranked = shuffle(pool).sort((a, b) => light(a) - light(b) || (b.quality + (matches(b) ? bonus : 0)) - (a.quality + (matches(a) ? bonus : 0)))
     .map((ph) => (mode === 'no-product-photo' && matches(ph) ? { ...ph, lookalike: true } : ph));
   return { set: chosen.id, title: chosen.set.title, note: chosen.set.note, treatment: dir.photoTreatment || null, others: scored.filter((x) => x.id !== chosen.id).slice(0, 4).map((x) => x.id), photos: ranked.slice(0, mode === 'interface' ? 4 : 8) };
 }
@@ -402,7 +421,23 @@ function adjustments(bp, s) {
   if (bp.archetype && /single action[^.;]{0,40}?\b(?:text link|underlined (?:text )?link)/i.test(text)) notes.push('Its action is a text link: the primary action on the first screen is a real button (filled or solid-bordered, 44px or taller), placed where the blueprint puts the link. A second action may stay a link.');
   if (s.type?.class === 'condensed-heavy' && /\d+(?:\.\d+)?vw/.test(text)) notes.push('Its vw sizes assume a face of normal width: with this condensed display face, size the words to fill the measure the blueprint gives them instead of copying the vw value.');
   if (/\b0[1-9]\b(?![:.,]\d)|numbered|index number/i.test(text)) notes.push('It numbers things 01, 02: drop the numbers unless they are real data (a price, a date, a count).');
+  // the inspector takes large text near a section's top as its heading (probe.mjs layout) and fails two sections without one
+  if (bp.role && bp.role !== 'footer' && /\b[Nn]o (?:section )?(?:heading|title)s?(?=[.,;:)]| and\b| or\b| at all\b)/.test(text)) notes.push('It has no heading. The inspector takes text at least 1.35 times the body size (and 22px or more) near the top of a section as its heading, and fails two sections that have neither: give it a short heading that names what it holds, or open it with its statement at that size (a statement stays at 36px or less and about 25 words).');
+  // heavy type asked of a display face that has no heavy weight; a face that is heavy at its one weight (Anton, Young Serif) is not
+  const display = s.type?.display;
+  const heaviest = Math.max(...(display?.weights || [0]));
+  if (display && heaviest < 600 && s.type.class !== 'condensed-heavy' && !/heavy cut/i.test(display.settings || '') && /\b(?:heavy|bold|black|extra-?bold|ultra-?bold)\s+(?:face|weight|cut|type|typeface|grotesk|grotesque|sans|serif|display|letters|lettering|capitals|caps|headlines?|wordmark)\b|\b(?:in|at) (?:a )?(?:heavy|bold|black) weight|font-weight:\s*[6-9]00|\bweight (?:[6-9]00|bold|black|heavy)\b/i.test(text)) notes.push(`It asks for heavy type; ${display.family} has weight ${heaviest} only. Never fake a bold or swap the face: keep the type system's settings and let size carry the mass.`);
   return notes;
+}
+// Whether text names a device the house rules ban, as a thing to do. A mention that refuses it ("no pills",
+// "instead of a gradient") does not count. Heavy type and pill-shaped buttons are allowed, so they are not here.
+function banned(text) {
+  const BANNED = /gradients?|\bblobs?\b|blur(?:s|red)? (?:it|them|into)\b|blurred (?:dark |soft |colou?red )?(?:rings?|circles?|shapes?|orbs?)|glass|backdrop[- ]blur|frosted|glows?|drop[- ]shadows?|soft shadows?|monospace|\bmono\b|eyebrows?|tracked|letter-?spaced|small caps|(?:tiny|small) (?:uppercase|capitals|caps)|uppercase (?:labels?|links?|tags?|captions?)|outlined? (?:type|letters|lettering|headlines?|words?|lines|text|strokes?)|as outlines?|stroke-only|stroked (?:type|letters|text)|\b0[1-9]\b(?![:.,]\d)|numbered|index numbers?|hairlines?|thin rules?|grid ?lines|crop marks|crosshairs?|pill (?:badges?|nav(?:igation)?|tags?|labels?)|icon(?:-topped)? cards?|emoji|violet|purple|indigo|(?:italic|serif|coloured|underlined) (?:accent )?words?/gi;
+  const t = String(text || '');
+  for (const m of t.matchAll(BANNED)) {
+    if (!/\b(?:no|without|never|not|nor|instead of|rather than|free of|avoids?|avoiding)\b[^.;,]*$/i.test(t.slice(Math.max(0, m.index - 40), m.index))) return true;
+  }
+  return false;
 }
 // Every blueprint of a role that suits this direction and this build's real assets.
 function sectionPool(dir, role, input) {
@@ -441,20 +476,52 @@ function dealReferences(dir, input) {
 
 // ---------- rendering ----------
 function siteCard(s, full) {
-  const lines = [`- **${s.name}** (${s.source}, studied score ${s.score}) \`${s.id}\``, `  Idea: ${s.idea}`, `  Hero: ${s.hero}`];
+  const lines = [`- **${s.name}** (${s.source}, studied score ${s.score}) \`${s.id}\``];
   if (full) {
-    lines.push(`  Type: ${s.type}`, `  Colour: ${s.colour}`, `  Imagery: ${s.imagery}`, `  Layout: ${s.layout}`);
+    lines.push(`  Idea: ${s.idea}`, `  Hero: ${s.hero}`, `  Type: ${s.type}`, `  Colour: ${s.colour}`, `  Imagery: ${s.imagery}`, `  Layout: ${s.layout}`);
     if (s.media) lines.push(`  Pictures and footage: ${s.media}`);
     if (s.motion) lines.push(`  Motion: ${s.motion}`);
     for (const sec of s.sections || []) lines.push(`  Section (${sec.role}): ${sec.description}`);
     for (const t of s.steal || []) lines.push(`  Worth taking: ${t}`);
     lines.push(`  URL: ${s.url}`);
-  } else if (s.steal?.[0]) lines.push(`  Worth taking: ${s.steal[0]}`);
+  } else {
+    // on the sheet only what the house rules let the builder take: the idea and one lesson, never the hero capture
+    if (!banned(s.idea)) lines.push(`  Idea: ${s.idea}`);
+    const steal = (s.steal || []).find((t) => !banned(t));
+    if (steal) lines.push(`  Worth taking: ${steal}`);
+  }
   return lines.join('\n');
 }
-function render(s) {
+// The recipe a dealt motion names ("Recipe: 'Masked line reveal' in references/motion.md"), with what it
+// assumes from the rest of that file: the motion tokens, the `html.js` line, and the reveal observer when
+// the recipe waits for `.is-in` without one. Null when the motion names no recipe or the file has none.
+function motionRecipe(description) {
+  const name = (String(description || '').match(/Recipe: '([^']+)'/) || [])[1];
+  if (!name) return null;
+  let md; try { md = readFileSync(MOTION_MD, 'utf8').replace(/\r\n/g, '\n'); } catch { return null; }
+  const block = (from) => { const i = md.indexOf(from); if (i === -1) return ''; const rest = md.slice(i + from.length); const end = rest.search(/^#{2,3} /m); return from + (end === -1 ? rest : rest.slice(0, end)); };
+  const heads = [...md.matchAll(/^### (.+)$/gm)].filter((m) => m[1].startsWith(name));
+  if (heads.length !== 1) return null;
+  const recipe = block(heads[0][0]).trim();
+  const tokens = (block('## 4. Tokens').match(/```css\n[\s\S]*?```/) || [''])[0];
+  // §6's opening: the notes every recipe assumes (frames that become scroll containers, clipped targets) and the html.js line
+  const shared = block('## 6. Recipes').replace(/^## 6\. Recipes\s*/, '').trim();
+  const out = [`Recipe (references/motion.md §6), with the motion tokens (§4) and the notes and \`html.js\` line that every recipe assumes:`];
+  if (tokens) out.push(tokens);
+  if (shared) out.push(shared);
+  out.push(recipe.replace(/^### /, '#### '));
+  if (/\bis-in\b/.test(recipe) && !/IntersectionObserver/.test(recipe)) {
+    const observer = (block('### Reveal on scroll (once)').match(/```js\n[\s\S]*?```/) || [''])[0];
+    if (observer) out.push('It waits for the class `is-in`. Add it once, as the element enters the viewport, with the observer of "Reveal on scroll (once)" (give the element `data-reveal`, or add its selector), or with `assets/base.js`, which does the same for `[data-reveal]`:', observer);
+  }
+  return out.join('\n\n');
+}
+// The whole sheet, or with `only` ({ parts, role } from --show <part>) the header, the parts named and the house rules.
+function render(s, only = null) {
   const d = s.direction; const o = [];
-  const p = (x = '') => o.push(x);
+  let on = true;
+  const part = (k) => { on = !only || k === 'always' || only.parts.has(k); };
+  const p = (x = '') => { if (on) o.push(x); };
   p(`# DIRECTION SHEET — ${d.name}`);
   p(`seed ${s.seed} · drawn ${s.at.slice(0, 10)}${s.redraws ? ` · redraws: ${s.redraws}` : ''} · sector ${s.input.sector}${s.input.tone ? ' · tone ' + s.input.tone : ''}`);
   if (s.input.brief) p(`Brief: ${s.input.brief}`);
@@ -480,12 +547,15 @@ function render(s) {
   p('blueprint names onto one of your five type steps instead of adding a sixth. Use one button shape, one corner radius and one pair of page margins on');
   p('the whole page, whatever individual blueprints say. If a blueprint names a kind of typeface (a light serif, a heavy grotesk), use the dealt face.');
   p();
+  part('idea');
   p('## 1. The idea'); p(d.idea); p();
   p('Before anything else, write one sentence in your notes: "On this page, <the subject\'s own material> becomes <the device>."');
   p('Fill the first blank from your inventory of what only this client has (its name and what it means, its street, its numbers, its');
   p('constraint), then put the nearest competitor in the sentence: if it still works, the idea is the category\'s, not the client\'s.');
   p('Then name the one live thing the visitor can do on the page (SKILL.md step 4).'); p();
+  part('composition');
   p('## 2. Composition'); p(d.composition); p();
+  part('type');
   if (s.type) {
     const t = s.type;
     p(`## 3. Type — ${t.name}`); p(t.note);
@@ -498,6 +568,7 @@ function render(s) {
     p('The display size itself comes from the hero blueprint below.');
     p();
   } else { p('## 3. Type'); p('Kept from the brand. ' + (d.typography || '')); p(); }
+  part('colour');
   if (s.palette) {
     const c = s.palette;
     p(`## 4. Colour — ${c.name}`); p('```css'); p(':root {');
@@ -505,6 +576,7 @@ function render(s) {
     (c.fields || []).forEach((f, i) => p(`  --field-${i + 1}: ${f.bg};${f.ink ? `  --field-${i + 1}-ink: ${f.ink};` : ''}`));
     p('}'); p('```'); p(c.note); if (d.colour) p(d.colour); p();
   } else { p('## 4. Colour'); p('Kept from the brand. ' + (d.colour || '')); p(); }
+  part('imagery');
   p('## 5. Imagery');
   // where to look for real pictures of the subject's world, with first queries built from the brief
   const qs = assetQueries(s.input);
@@ -537,21 +609,35 @@ function render(s) {
   }
   p();
   const adjust = (bp) => { const n = adjustments(bp, s); if (n.length) { p(); p('Adjusted for this page:'); for (const x of n) p(`- ${x}`); } };
+  part('hero');
   p(`## 6. Hero — ${s.hero.name}`); p(s.hero.blueprint); p(); p(`On a phone: ${s.hero.mobile}`); if (s.hero.headline) p(`Headline: ${s.hero.headline}`); adjust(s.hero); p();
+  part('sections');
   p('## 7. Sections, in order');
   p('Each is a composition to rebuild with this project\'s content. Keep the geometry; change the subject. Re-order or drop a');
   p('section when the argument of the page needs it (see references/copy.md), never to fall back to a card grid.');
   s.sections.forEach((sec, i) => {
+    if (only?.role && sec.role !== only.role) return;
     p();
     if (!sec.blueprint) { p(`### ${i + 1}. ${sec.role}`); p('No blueprint in the library for this role. Compose it from the direction above, using a layout shape not used by its neighbours.'); return; }
     p(`### ${i + 1}. ${sec.role} — ${sec.name} (${sec.shape})`); p(sec.blueprint); if (sec.mobile) p(`On a phone: ${sec.mobile}`); adjust(sec);
   });
   p();
-  if (s.motion) { p(`## 8. Motion — ${s.motion.name}`); p(s.motion.description); p('This is the signature move, the one loud moment. Around it the page still needs the rest of the motion layer (SKILL.md step 9): an entrance for the parts of every section, feedback on every control, and one moving picture. The inspector fails a page that barely moves. Recipes: references/motion.md.'); p(); }
-  if (s.scenes?.length) {
+  part('motion');
+  if (s.motion) {
+    p(`## 8. Motion — ${s.motion.name}`); p(s.motion.description);
+    // stillness has no showpiece, but the page still needs the rest of the layer, or the gate fails it
+    if (s.motion.id === 'stillness') p('There is no signature move here, and no load animation: the first screen is simply there. The rest of the motion layer is still required (SKILL.md step 9), kept small: an entrance for the parts of every section (rising 8–16px over 300–500ms), feedback on every control, and one slow moving picture. The inspector fails a page that barely moves. Recipes: references/motion.md.');
+    else p('This is the signature move, the one loud moment. Around it the page still needs the rest of the motion layer (SKILL.md step 9): an entrance for the parts of every section, feedback on every control, and one moving picture. The inspector fails a page that barely moves. Recipes: references/motion.md.');
+    const recipe = motionRecipe(s.motion.description);
+    if (recipe) { p(); p(recipe); }
+    p();
+  }
+  part('scenes');
+  const scenes = (s.scenes || []).filter((sc) => !only?.role || sc.carries === only.role);
+  if (scenes.length) {
     p('## 9. Scroll scenes');
     p(`The page's big moments: ${s.scenes.length} scroll scenes, tested and ready to fill. They are part of the composition, so build them in step 6 with the section they carry, not as a motion afterthought. Each runs on the shared stage (assets/scenes/stage.js and stage.css, with GSAP and Lenis from the pinned CDN lines in stage.js) and ships its own finished composition for reduced motion and for phones that rest. How to put one on a page, fill it and check it: references/scenes.md. Check them with \`node <skill>/scripts/scenes.mjs <page>\` and look at every sheet.`);
-    for (const sc of s.scenes) {
+    for (const sc of scenes) {
       p();
       p(`### ${sc.name} (\`${sc.id}\`)${sc.carries ? ` — carries the ${sc.carries === 'hero' ? 'first screen' : sc.carries + ' section'}` : ' — a transition between two sections'}`);
       p(sc.summary);
@@ -564,14 +650,16 @@ function render(s) {
     p('Leave a quiet section between two scenes so each one lands. A scene whose content you cannot fill honestly is redrawn (`--redraw scenes`), never faked.');
     p();
   }
+  part('notes');
   if (d.richness) { p('## 10. Where the richness comes from'); p(d.richness); p(); }
   if (d.pitfalls) { p('## 11. How this direction goes wrong'); p(d.pitfalls); p(); }
   if (s.references?.length) {
     p('## 12. Real references');
     p('Studied sites that work this way. Take the principle, never the specifics: no names, copy, images or signature assets of theirs.');
     for (const r of s.references) p(siteCard(r, false));
-    p('Full notes on any of them: `node draw.mjs --site <id>`.'); p();
+    p('Full notes on any of them: `node draw.mjs --site <id>`. Their own pages break the house rules in places; the house rules still win.'); p();
   }
+  part('always');
   p('## Always');
   p('Headlines two lines or fewer at every width. No eyebrow labels, no monospace, no 01/02/03, no thin rules, no gradients, no shadows at rest,');
   p('no cream-and-terracotta, no violet. The frame: one h1 on the first screen that says what this is, equal outer margins, no');
@@ -579,6 +667,6 @@ function render(s) {
   p('`inspect.mjs` measures all of it.');
   if (s.allow?.length) p(`This direction is allowed: ${s.allow.join(', ')} (the inspector reads this from the saved sheet).`);
   p();
-  p(`Saved to ${sheetPath.split('\\').join('/')} · reprint with \`node draw.mjs --show\``);
+  p(only ? `Part of the sheet saved to ${sheetPath.split('\\').join('/')} · the whole sheet: \`node draw.mjs --show\`` : `Saved to ${sheetPath.split('\\').join('/')} · reprint with \`node draw.mjs --show\``);
   return o.join('\n');
 }

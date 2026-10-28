@@ -13,10 +13,10 @@
 // Exit code 0 = no FAIL findings. Exit code 1 = at least one FAIL (the page is not done).
 // Zero dependencies: drives an installed Chrome/Edge/Chromium. Node 22+.
 // Widths sharing a viewport class receive width-qualified screenshot filenames.
-import { existsSync, mkdirSync, readFileSync, writeFileSync, statSync, createReadStream, readdirSync, unlinkSync } from 'node:fs';
-import { resolve, join, relative, dirname, extname, sep } from 'node:path';
-import { createServer } from 'node:http';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, unlinkSync } from 'node:fs';
+import { resolve, join, relative } from 'node:path';
 import { Browser, sleep } from './lib/cdp.mjs';
+import { serve } from './lib/serve.mjs';
 import { probe, frame, layout, app, colourShare } from './lib/probe.mjs';
 import { judge, judgeLayout, judgeApp, APP_SKIP } from './lib/rules.mjs';
 import { viewportClass as name, screenshotLabel, isInspectionScreenshot } from './lib/inspection-files.mjs';
@@ -40,28 +40,8 @@ if (!target || target === '-h' || target.startsWith('--')) {
 for (const p of ['.taste-skill/direction.json', join(outDir, '..', 'direction.json')]) {
   if (existsSync(p)) { try { const d = JSON.parse(readFileSync(p, 'utf8')); allow = [...new Set([...allow, ...(d.allow || [])])]; if (d.kind === 'app') appMode = true; if (Array.isArray(d.scenes) && d.scenes.length) film = true; dealtFonts = (d.input?.keep || []).includes('type') ? [] : d.kind === 'app' ? [d.style?.tokens?.font?.family].filter(Boolean) : [d.type?.display?.family, d.type?.text?.family].filter(Boolean); } catch {} break; }
 }
-// A local file is served over http from a throwaway server on 127.0.0.1, so the browser never has to
-// open a file path (some sandboxes show Node and the browser different views of the disk) and relative
-// assets, fetch() and module scripts behave as they will when the page is hosted.
-let url = target; let server = null;
-if (!/^https?:\/\//.test(target)) {
-  const file = resolve(target);
-  if (!existsSync(file)) { console.error('No such file: ' + file); process.exit(2); }
-  const cwd = resolve('.');
-  const root = file.startsWith(cwd + sep) ? cwd : dirname(file);
-  const MIME = { '.html': 'text/html; charset=utf-8', '.htm': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.avif': 'image/avif', '.gif': 'image/gif', '.ico': 'image/x-icon', '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf', '.otf': 'font/otf', '.mp4': 'video/mp4', '.webm': 'video/webm', '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml', '.webmanifest': 'application/manifest+json' };
-  server = createServer((req, res) => {
-    try {
-      let f = resolve(join(root, decodeURIComponent(new URL(req.url, 'http://x').pathname)));
-      if (f !== root && !f.startsWith(root + sep)) { res.writeHead(403); return res.end(); }
-      if (statSync(f).isDirectory()) f = join(f, 'index.html');
-      res.writeHead(200, { 'content-type': MIME[extname(f).toLowerCase()] || 'application/octet-stream', 'content-length': statSync(f).size, 'cache-control': 'no-store' });
-      createReadStream(f).pipe(res);
-    } catch { res.writeHead(404); res.end('not found'); }
-  });
-  await new Promise((r) => server.listen(0, '127.0.0.1', r));
-  url = `http://127.0.0.1:${server.address().port}/${relative(root, file).split(sep).map(encodeURIComponent).join('/')}`;
-}
+// A local file is served over http from a throwaway server on 127.0.0.1 (lib/serve.mjs).
+const { url, server } = await serve(target);
 const HEIGHT = { 1440: 900, 1280: 800, 1024: 768, 768: 1024, 390: 844, 375: 812 };
 
 mkdirSync(outDir, { recursive: true });

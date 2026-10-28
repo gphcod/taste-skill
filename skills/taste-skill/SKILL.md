@@ -154,8 +154,9 @@ The command prints a **direction sheet**. It is the art direction for this build
   has unmistakable colours of its own (its material, the paint of its street, the landscape outside
   its windows), keep the dealt proportions and take the colours from the subject instead, and say so
   in the report.
-- Reprint it any time with `node <skill>/scripts/draw.mjs --show`. In a long session, re-read it before each
-  section you build.
+- Reprint it any time with `node <skill>/scripts/draw.mjs --show`. In a long session, re-read the part you
+  are about to build: `--show hero` or `--show section:<role>` prints it with the idea, the composition,
+  the type and colour tokens and the house rules (`--show type | colour | imagery | motion` also work).
 
 ### 4. Find the idea
 
@@ -321,8 +322,9 @@ browser at 1440, 768 and 390 pixels, measures it (headline line counts, type siz
 loaded, colours, rules, shadows, gradients, contrast, overflow, and the frame: equal margins, sections
 huddled on one side, blank stretches, the title, untitled sections, text against the screen edge) and
 saves screenshots to `.taste-skill/inspect/`. Fix every `FAIL`. Treat each `WARN` as wrong unless you can defend it to a
-designer in one sentence. Re-run until there are no `FAIL`s. Do not argue with the meter and do not
-hide things from it. The inspector serves local files over a throwaway local server; if the page must
+designer in one sentence. Re-run until there are no `FAIL`s. The one exception before step 9 is
+`still-page`: the motion layer does not exist yet, and step 9 answers it. Do not argue with the meter
+and do not hide things from it. The inspector serves local files over a throwaway local server; if the page must
 also open straight from the file system, open `index.html` that way once before you finish.
 
 Inspect what the visitor receives. With a build step, run the last gate on the production build
@@ -357,8 +359,10 @@ under sixteen). Any scroll scenes are already built (step 6); around them the la
 Transform and opacity only; every move has a `prefers-reduced-motion` fallback that keeps the content
 and drops the travel. A move that changes the colour or the layout of whole screens (colour by
 chapter, a pinned story) is part of the composition, so build it in step 6 and let every look round see
-it. `references/motion.md` has the tokens and tested recipes. Then run the inspector once more and check
-every screenshot for content that failed to appear.
+it. The sheet prints the signature move's recipe with the tokens and the `html.js` line it needs. From
+`references/motion.md` read §1 (the budget), §4 (the tokens), §8 (reduced motion) and §10 (the rules),
+and the recipe in §6 of each other move you use. Then run the inspector once more and check every
+screenshot for content that failed to appear.
 
 ### 10. Report
 
@@ -532,7 +536,7 @@ open collections could not be searched.
 | `references/critique.md` | Step 8. How to look, how to score, what to fix first. |
 | `references/tells.md` | The dated registry of generated-page tells and what each is replaced by. |
 | `references/research.md` | The study: method, numbers, what the best and worst sites do. Cite it, do not guess. |
-| `scripts/draw.mjs` | Deals and reprints the direction; `--photos`, `--site <id>` for more references; `--app` deals an app style instead. |
+| `scripts/draw.mjs` | Deals and reprints the direction (`--show`, or `--show section:<role>` for one part); `--photos`, `--site <id>` for more references; `--app` deals an app style instead. |
 | `scripts/assets.mjs` | Step 6: searches open collections for real pictures of the subject's world; `--get` downloads with the credit, `--credits` prints them. |
 | `scripts/lint.mjs` · `scripts/inspect.mjs` | The gate. |
 | `scripts/scenes.mjs` | The gate for scroll scenes: each scene at 0-100% of its hold, desktop, phone, reduced motion. |

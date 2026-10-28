@@ -170,7 +170,11 @@ splits serve short headings and button rolls; on long statements they leave frag
 ## 6. Recipes
 
 All recipes keep the content visible when JavaScript is off, put every hidden state inside
-`prefers-reduced-motion: no-preference`, and use the tokens above. Two notes that apply to several:
+`prefers-reduced-motion: no-preference`, and use the tokens above. Three notes that apply to several:
+
+- **Observe the frame, clip the picture.** Chrome's `IntersectionObserver` counts the target's own
+  `clip-path`, so an element clipped shut (`inset(0 0 100% 0)`) never reports itself in view and stays
+  shut. Put the clip on the child and observe the frame around it, as the "Image shutter" recipe does.
 
 - **Scroll timelines need a scroller to watch.** `animation-timeline: view()` takes the nearest scroll
   container, and `overflow: hidden` makes one. A picture inside an `overflow: hidden` frame therefore
@@ -285,12 +289,13 @@ the one hero or showcase image.
 ```css
 .shutter { overflow: hidden; }
 @media (prefers-reduced-motion: no-preference) {
-  .js .shutter { clip-path: inset(0 0 100% 0); transition: clip-path 1100ms var(--ease-in-out); }
-  .js .shutter img { transform: scale(1.12); transition: transform 1500ms var(--ease-soft); }
-  .js .shutter.is-in { clip-path: inset(0); }
-  .js .shutter.is-in img { transform: none; }
+  .js .shutter > * { clip-path: inset(0 0 100% 0); transform: scale(1.12); transition: clip-path 1100ms var(--ease-in-out), transform 1500ms var(--ease-soft); }
+  .js .shutter.is-in > * { clip-path: inset(0); transform: none; }
 }
 ```
+
+The frame (`.shutter`) is what the observer watches and gets `is-in`; the picture inside it (the `img`,
+`picture` or `video`) carries the clip. Clipped shut, the frame itself would never be reported in view.
 
 ### Press and hover
 

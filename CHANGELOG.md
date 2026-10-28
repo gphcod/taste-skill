@@ -4,6 +4,20 @@ All notable changes to taste-skill live here. The repo follows SemVer-ish discip
 
 ---
 
+## Unreleased
+
+A direction sheet that agrees with itself, and less to re-read.
+
+- **The image shutter opens again.** Chrome's `IntersectionObserver` counts an element's own `clip-path`, so a frame clipped shut was never reported in view: a shutter below the first screen stayed closed, and one on it opened only when the 2.5 s safety net in `base.js` fired. The clip now sits on the picture inside the frame, in `assets/base.css` and in the recipe in `references/motion.md`, which also says why.
+- **The sheet prints the signature move's recipe** from `references/motion.md`, with the motion tokens and the `html.js` line it needs, and the reveal observer when the recipe waits for `.is-in`.
+- **Photographs follow the direction's light.** A direction with its own tone (the dark room) takes a photograph set that can supply it and deals those photographs first.
+- **More "Adjusted for this page" notes:** a section blueprint with no heading is told how the inspector finds one, and a blueprint that asks for heavy type when the dealt display face has no heavy weight is told to take the mass from size, never a faked bold.
+- **Reference cards keep only what the house rules let you take:** the hero capture is gone from the sheet (still in `--site <id>`), and an idea or lesson that recommends a banned device (outlined headlines, tiny tracked capitals, gradients, glass) is left out.
+- **Type and motion data no longer contradict the house rules:** no three-line stacks or two-tone headings, italic for a whole headline only, and "Stillness" keeps the required motion layer instead of forbidding it.
+- **`draw.mjs --show <part>`** (`hero`, `section:<role>`, `type`, `colour`, `imagery`, `motion`) reprints one part with the idea, the composition and the type and colour tokens, about a third of the whole sheet. SKILL.md uses it for the re-read before each section, says that `still-page` waits for step 9, and names the parts of `motion.md` to read.
+- `inspect.mjs` and `scenes.mjs` share one local file server (`scripts/lib/serve.mjs`); `scenes.mjs` now serves fonts, icons and manifests with the right types and lengths.
+- `tests/draw-sheet.mjs` covers the sheet changes and runs in CI.
+
 ## 2.1.5 - 2026-10-25
 
 Fixes from the community. Thanks to everyone who reported and sent them.

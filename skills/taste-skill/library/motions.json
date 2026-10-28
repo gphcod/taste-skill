@@ -52,7 +52,7 @@
  {
   "id": "stillness",
   "name": "Stillness",
-  "description": "No showpiece. The page is simply there, instantly, and the discipline is the statement. Motion is limited to exact feedback: a 140ms press on the button, a 180ms colour change on links, focus rings that appear without delay. Do not add a load animation or scroll reveals to this direction."
+  "description": "No showpiece. The page is simply there, instantly, and the discipline is the statement: no load animation and no scroll-linked effects. The rest of the motion layer stays, kept small and exact: the parts of each section rise 8–16px over 300–500ms as it enters, a 140ms press on the button, a 180ms colour change on links, focus rings that appear without delay, and one slow moving picture."
  },
  {
   "id": "opening-window",

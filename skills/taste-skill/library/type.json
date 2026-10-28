@@ -985,7 +985,7 @@
     900
    ],
    "italic": false,
-   "settings": "weight 900 · tracking -0.03em · leading 0.92 · uppercase; centred three-line stacks work well",
+   "settings": "weight 900 · tracking -0.03em · leading 0.92 · uppercase; a tight two-line stack, centred at most once on the page",
    "css": "<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n<link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>\n<link href=\"https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@900&family=Red+Hat+Text:wght@400;500&display=swap\" rel=\"stylesheet\">"
   },
   "text": {
@@ -1073,7 +1073,7 @@
     300
    ],
    "italic": false,
-   "settings": "weight 300 · tracking -0.022em · leading 1.05 · sentence case; a heading may be two-tone, grey then full ink",
+   "settings": "weight 300 · tracking -0.022em · leading 1.05 · sentence case; every heading in one ink, the full ink",
    "css": "<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n<link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>\n<link href=\"https://fonts.googleapis.com/css2?family=Stack+Sans+Headline:wght@300&family=Stack+Sans+Text:wght@400;500&display=swap\" rel=\"stylesheet\">"
   },
   "text": {
@@ -1397,7 +1397,7 @@
     500
    ],
    "italic": true,
-   "settings": "weight 500 with optical sizing on · tracking -0.02em · leading 0.95 · uppercase or sentence case; italic for a whole line, never for one word",
+   "settings": "weight 500 with optical sizing on · tracking -0.02em · leading 0.95 · uppercase or sentence case; italic for a whole headline, never for part of one",
    "css": "<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n<link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>\n<link href=\"https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@0,500;1,500&family=Jost:wght@400;500&display=swap\" rel=\"stylesheet\">"
   },
   "text": {
@@ -1533,7 +1533,7 @@
     400
    ],
    "italic": true,
-   "settings": "weight 400 · tracking -0.02em · leading 0.95 · roman capitals for the main words with lowercase italic for the connecting words at the same size, or sentence case throughout; centred lines work",
+   "settings": "weight 400 · tracking -0.02em · leading 0.95 · roman capitals or sentence case; a headline may be set wholly in the italic, never roman and italic within one; centred lines work",
    "css": "<link rel=\"preconnect\" href=\"https://api.fontshare.com\">\n<link rel=\"preconnect\" href=\"https://cdn.fontshare.com\" crossorigin>\n<link href=\"https://api.fontshare.com/v2/css?f[]=boska@400,401,500&display=swap\" rel=\"stylesheet\">"
   },
   "text": {
@@ -1552,7 +1552,7 @@
    "Louize Display",
    "PP Pangaia"
   ],
-  "note": "A high-contrast serif with pointed serifs and a lively italic, used roman and italic together at one size. Suits perfume, jewellery, lodges, weddings and other occasions for ceremony.",
+  "note": "A high-contrast serif with pointed serifs and a lively italic: roman headlines, with the italic for a whole headline or a quotation, never for single words. Suits perfume, jewellery, lodges, weddings and other occasions for ceremony.",
   "seenIn": [
    "aww-vero-new-york",
    "opl-eagles-nest",

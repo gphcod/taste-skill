@@ -96,10 +96,10 @@ p + p { margin-top: 0.9em; }
   .js .lines [data-line] { transform: translateY(105%); animation: ad-line 900ms var(--ease-out) forwards; animation-delay: calc(var(--i, 0) * 110ms + 150ms); }
   .js [data-reveal] { opacity: 0; transform: translateY(24px); transition: opacity 700ms var(--ease-out), transform 900ms var(--ease-out); }
   .js [data-reveal].is-in { opacity: 1; transform: none; }
-  .js .shutter[data-reveal] { opacity: 1; transform: none; clip-path: inset(0 0 100% 0); transition: clip-path 1100ms var(--ease-in-out); }
-  .js .shutter[data-reveal] img { transform: scale(1.12); transition: transform 1500ms var(--ease-soft); }
-  .js .shutter[data-reveal].is-in { clip-path: inset(0); }
-  .js .shutter[data-reveal].is-in img { transform: none; }
+  /* the frame is observed and stays unclipped (a frame clipped shut is never reported in view); its picture carries the clip */
+  .js .shutter[data-reveal] { opacity: 1; transform: none; }
+  .js .shutter[data-reveal] > * { clip-path: inset(0 0 100% 0); transform: scale(1.12); transition: clip-path 1100ms var(--ease-in-out), transform 1500ms var(--ease-soft); }
+  .js .shutter[data-reveal].is-in > * { clip-path: inset(0); transform: none; }
 }
 @keyframes ad-rise { to { opacity: 1; transform: none; } }
 @keyframes ad-line { to { transform: none; } }
